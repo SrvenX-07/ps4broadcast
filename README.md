@@ -1,3 +1,6 @@
+[![Gitter](https://img.shields.io/gitter/room/tilerphy/ps4broadcast.svg)](https://gitter.im/ghost-studio/ps4broadcast)
+# 小道消息
+PS5、XBOX Series X依然支持rtmp方式直播，所以ps4broadcast也支持PS5和XBOX Series X（XBOX无弹幕支持）。
 # 前言
 鉴于PS4暂时没有直播到国内直播平台的功能，所以用了一些手段拦截twitch的RTMP内容与IRC聊天室内容，并且转发到斗鱼（将来可能会增加其他的国内直播平台。）
 另外，这只是个折中手段，没准过几天PS4官方支持国内的直播平台推流了，起码国行机器是有这个可能的，这个谁说的准呢？所以这个方案只是个临时的，没有办法的办法。
@@ -14,7 +17,15 @@
 
 
 # 需要会什么
+
 一些Linux的基础知识，一些shell脚本以及目录知识。
+
+如果不会这些，请直接使用镜像教程： https://www.psnine.com/topic/32642
+
+最新的镜像release： https://github.com/Tilerphy/ps4broadcast/releases
+
+如果Twitch绑定不上需要科学上网，请去qq群383701265找我，我能提供一个临时的代理。
+
 # 准备工作
 
 Debian 8 或者 Raspbian（树莓派操作系统，debian的ARM编译）的电脑或者树莓派或者虚拟机，这台电脑的ip假设是`192.168.0.8`

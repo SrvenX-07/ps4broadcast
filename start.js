@@ -1,4 +1,4 @@
-var version = require("./version");
+//var version = require("./version");
 var fs =require("fs");
 var express= require("express");
 var app = express();
@@ -8,9 +8,8 @@ var xhttps =require("https");
 var io= require("socket.io")(http);
 var exec = require("child_process").exec;
 var net = require("net");
-var douyu = require("./douyu");
 // 这个和install.sh中用的linux电脑虚拟ip一致，或者写成0.0.0.0
-var host = "192.168.200.1";
+var host = "0.0.0.0";
 var port = 6667;
 // 额外模块加载与使用
 var modules = [];
@@ -44,6 +43,10 @@ function m(arg){
                 }
         });
 }
+
+process.on('uncaughtException', function (err) {
+    console.log(err);
+}); 
 //
 //
 //
@@ -68,16 +71,31 @@ var Client = function(tid, sock){
                         this.sock.write(":tmi.twitch.tv 372 "+this.tid+" :You are in a maze of twisty passages, all alike.\r\n");
                         this.sock.write(":tmi.twitch.tv 376 "+this.tid+" :>\r\n");
                         this.sock.write("\r\n");
+			console.log("handshake sent to ps4");
                 }catch(e){
-
+			console.log("handshake sent faild.");
                 }
         };
 }
 
 var lp = null;
 io.on("connection", (websock)=>{
-        websock.emit("message", "Connected to PS4broadcast-WebRunner v"+version);
-        if(fs.existsSync(__dirname+"/lp.data")){
+        websock.emit("message", "当前版本（Current Version） v"+fs.readFileSync("./version"));
+        var latestReq = xhttps.get("https://raw.githubusercontent.com/Tilerphy/ps4broadcast/master/version?r="+Math.random(), (res)=>{
+		var data = "";
+		res.on("data", (d)=>{
+			data += d.toString();
+		});
+		res.on("end",()=>{
+			websock.emit("message", "最新版本（Latest Version） v" + data);
+		});
+	});
+	//ignore error
+	latestReq.on("error",()=>{
+		console.log("Cannot connect to github, please check the version manually.");
+	});
+	latestReq.end();
+	if(fs.existsSync(__dirname+"/lp.data")){
                 websock.emit("lastState", JSON.parse(fs.readFileSync(__dirname+"/lp.data")));
         }
         websock.on("resetlive", (msg)=>{
@@ -93,7 +111,8 @@ io.on("connection", (websock)=>{
                                 }
                         }
                         lp = new LivingProcess();
-                        lp.setup(msg.tid, msg.items)
+			lp.webapp = app;
+                        lp.setup(msg.tid,msg.recordPath, msg.items)
                           .then(lp.prepare())
                           .then(lp.config())
                           .then(lp.resetTwitchClient())
@@ -115,25 +134,36 @@ io.on("connection", (websock)=>{
                         }
                 });
         });
+
+	websock.on("update", ()=>{
+		exec("git pull origin master", (error, stdout, stderr)=>{
+			if(error || stderr){
+                                console.log(error);
+                                console.log(stderr);
+                        }
+		});
+	});
 });
 //start Web Server Defines
 //
 //
 var openRoom = function(rid, type, webIO, ps4){
-        return new roomModules[type].init(rid, webIO, ps4);
+        return new roomModules[type].init(rid, webIO, ps4,app);
 }
 var LivingProcess = function(tid, items){
         this.tid = tid;
         this.rooms = [];
         this.currentTwitchClient = null;
         this.server = null;
+	this.recordPath = "";
         this.items = items;
-        this.setup= (tid, items)=>{
+        this.setup= (tid,recordPath, items)=>{
                 return new Promise((resolve,reject)=>{
                         this.tid=tid;
+			this.recordPath = recordPath;
                         console.log(items);
                         this.items = items;
-                        fs.writeFileSync(__dirname+"/lp.data", JSON.stringify({tid:tid, items:items}));
+                        fs.writeFileSync(__dirname+"/lp.data", JSON.stringify({tid:tid,recordPath:recordPath, items:items}));
                         resolve();
                 });
         };
@@ -164,8 +194,8 @@ var LivingProcess = function(tid, items){
                                 this.currentTwitchClient = new Client(this.tid, sock);
                                 sock.on("data", (d)=>{
                                         var message = d.toString();
-                                        console.log(message);
-                                        if(message.indexOf("NICK") == 0){
+                                        console.log("Console said: "+message);
+                                        if(message.indexOf("NICK") == 0 || message.indexOf(" PASS")==0){
                                                 this.currentTwitchClient.sendHandshake();
                                         }
                                 });
@@ -196,8 +226,13 @@ var LivingProcess = function(tid, items){
         this.config =()=>{
                 return  new Promise((resolve,reject)=>{
                         try{
-                                var fileContent = "server { listen 1935; chunk_size 10240; max_message 64M; \n application app { live on; record off; meta copy; \n";
-                                for(var item of this.items){
+                                var fileContent = "server { listen 1935; chunk_size 10240; max_message 64M; \n"+
+							" application app { live on;  meta copy; \n";
+				if(this.recordPath!=null && this.recordPath.trim()!=""){
+					fileContent += "record all;record_path "+this.recordPath+";record_prefix ps4broadcast-; record_suffix %F(%T).flv;"+
+					" record_unique off; record_interval 60m; \n";
+                                }
+				for(var item of this.items){
                                         fileContent += "push "+
                                                         item.url
                                                         + (item.url.endsWith("/") ? "" : "/")+
@@ -234,6 +269,10 @@ app.use((req,res,next)=>{
 app.get("/",(req,res)=>{
         res.sendFile(__dirname+"/index.html");
 });
+
+app.get("/theme/:type", (req,res)=>{
+	res.sendFile(__dirname+"/index."+req.params.type+".html");
+})
 
 app.get("/t/:psnid",(req,res)=>{
         var psnid = req.params.psnid;

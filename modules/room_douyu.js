@@ -1,19 +1,23 @@
+
 var xhttp = require("http");
-var douyu = require("../douyu");
-function init(rid, io, lp, invokeModules){
+var douyu = require("douyudm");
+function init(rid, io, lp, app){
 	this.rid = rid;
 	this.lp= lp;
-	this.currentRoom = new douyu.ChatRoom(this.rid);
-	this.close = ()=>{
-		this.currentRoom.close();
+	this.opt= {
+		debug:false
+	};
+	this.currentRoom = new douyu(this.rid, this.opt);
+        this.close = ()=>{
+		this.currentRoom.logout();
 	}
+        this.currentRoom.on("error",()=>{ 
+		io.emit("message","[D]弹幕连接失败");
+	});
 	this.currentRoom.on("chatmsg", (msg)=>{
        		if(this.lp.currentTwitchClient){
                		this.lp.currentTwitchClient.toPS4(msg.nn, msg.txt);
        		}
-		if(invokeModules){
-			invokeModules(msg.txt);
-		}
         	io.emit("message",'[D]'+msg.nn + ":"+msg.txt);
 	});
 	this.currentRoom.on("uenter", (msg)=>{
@@ -49,7 +53,7 @@ function init(rid, io, lp, invokeModules){
 		douyuReq.end();
 	});
 	try{
-		this.currentRoom.open();
+		this.currentRoom.run();
 	}catch(e){
 		io.emit("error", e.toString());
 	}

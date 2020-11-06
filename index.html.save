@@ -9,9 +9,8 @@
 
 <body>
 	<div class="rooms">
-		 <div>Record Path: <input type="text" id="recordPath" style="width:520px"></div>
-		<div>Twitch Id: <input type="textbox" id="tid">
-		<button class="button" onclick="addMore()"><div><i class="iconfont icon-add"></i></div></button></div>
+		<input type="textbox" id="tid" placeholder="Twitch Id">
+		<button class="button" onclick="addMore()"><div><i class="iconfont icon-add"></i></div></button>
 		<div id="rooms"></div>
 		<div class="status">
 			<!--<button class="live"><div><i class="iconfont icon-iconfontplay2"></i></div></button>-->
@@ -47,6 +46,15 @@
 				messages.scrollTop = messages.scrollHeight;
 			});
 
+			socket.on("reconnecting", function(m){
+				var messages = document.getElementById("messages");
+                                if (messages.scrollHeight > 5000) {
+                                        messages.value = "";
+                                }
+                                messages.value = messages.value += m + "\n";
+                                messages.scrollTop = messages.scrollHeight;
+			});
+
 			socket.on("living", function (status) {
 				var messages = document.getElementById("messages");
 				messages.value = messages.value += "LIVING STATUS: " + status + "\n";
@@ -64,7 +72,6 @@
 						addMore(lp.items[l].rid, lp.items[l].url, lp.items[l].type, lp.items[l].code);
 					}
 					$("#tid").val(lp.tid);
-					$("#recordPath").val(lp.recordPath);
 				}
 			});
 			socket.on("error", function (error) {
@@ -78,7 +85,6 @@
 				var n = $('<div class="rooms" id="_' + roomSeq + '"><select id="type_' + roomSeq + '">' +
 					'<option value="douyu" ' + (type == 'douyu' ? 'selected' : '') + '>斗鱼</option>' +
 					'<option value="bilibili" ' + (type == 'bilibili' ? 'selected' : '') + '>Bilibili</option>' +
-					 '<option value="private" ' + (type == 'private' ? 'selected' : '') + '>Private</option>' +
 					'<select>' +
 					'<input type="textbox" id="rid_' + roomSeq + '" value="' + (rid ? rid : '') + '"  placeholder="Room ID">' +
 					'<input type="textbox" id="url_' + roomSeq + '" value="' + (url ? url : '') + '"  placeholder="RMTP URL">' +
@@ -101,7 +107,7 @@
 			function resetLiving() {
 				var messages = document.getElementById("messages");
 				messages.value = "";
-				var data = { tid: Id("tid").value,recordPath:Id("recordPath").value, items: [] };
+				var data = { tid: Id("tid").value, items: [] };
 				for (var i in roomsKey) {
 					var p = document.getElementById("_" + roomsKey[i]);
 					if (p) {
@@ -175,7 +181,7 @@
 				height: 33px;
 				border: 1px solid #CCC;
 				margin: 0 10px 10px 0px;
-				#float: left;
+				float: left;
 				line-height: 25px;
 			}
 
@@ -189,7 +195,7 @@
 				font-size: 1em;
 				transition: 0.2s;
 				color: #777;
-				#float: left;
+				float: left;
 				margin: 0px 10px 0 0;
 				padding: 5px;
 				border-radius: 5px;
